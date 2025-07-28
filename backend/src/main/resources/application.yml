@@ -1,0 +1,129 @@
+micronaut:
+  application:
+    name: leaveflow-backend
+  server:
+    port: 8080
+    static-resources:
+      default:
+        enabled: true
+        mapping: "/**"
+        paths: "classpath:static"
+    cors:
+      enabled: true
+      configurations:
+        web:
+          allowedOrigins:
+            - "http://localhost:4200"
+            - "http://localhost:3000"
+          allowedMethods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          allowedHeaders:
+            - "*"
+          allowCredentials: true
+  security:
+    authentication: bearer
+    reject-not-found: false
+    intercept-url-map:
+      # Allow all OPTIONS requests (CORS preflight)
+      - pattern: "/**"
+        httpMethod: OPTIONS
+        access:
+          - isAnonymous()
+      
+      # Public authentication endpoints
+      - pattern: "/api/auth/login"
+        httpMethod: POST
+        access:
+          - isAnonymous()
+      
+      - pattern: "/api/auth/register"
+        httpMethod: POST
+        access:
+          - isAnonymous()
+      
+      - pattern: "/api/auth/test"
+        httpMethod: GET
+        access:
+          - isAnonymous()
+      
+      # Admin endpoints for debugging (temporarily public)
+      - pattern: "/api/admin/**"
+        access:
+          - isAnonymous()
+      
+      # Public root endpoint (for health checks)
+      - pattern: "/"
+        httpMethod: GET
+        access:
+          - isAnonymous()
+      
+      # Protected user/admin endpoints (when they exist)
+      - pattern: "/api/users/**"
+        access:
+          - isAuthenticated()
+      
+      - pattern: "/api/leaves/**"
+        access:
+          - isAuthenticated()
+      
+      - pattern: "/api/admin/**"
+        access:
+          - isAuthenticated()
+          - hasRole('ADMIN')
+      
+      # Default: all other endpoints require authentication
+      - pattern: "/**"
+        access:
+          - isAuthenticated()
+    
+    token:
+      jwt:
+        signatures:
+          secret:
+            generator:
+              secret: "YourSecretKeyForJWTShouldBeAtLeast32CharactersLong123456789"
+    
+    endpoints:
+      login:
+        enabled: true
+      logout:
+        enabled: true
+
+datasources:
+  default:
+    url: jdbc:sqlite:./leaveflow.db
+    driverClassName: org.sqlite.JDBC
+    username: ""
+    password: ""
+
+jpa:
+  default:
+    properties:
+      hibernate:
+        dialect: org.hibernate.community.dialect.SQLiteDialect
+        hbm2ddl:
+          auto: update
+        show_sql: true
+        format_sql: true
+        use_sql_comments: true
+
+flyway:
+  datasources:
+    default:
+      enabled: true
+      locations: classpath:db/migration
+      baseline-on-migrate: true
+      validate-on-migrate: true
+
+logger:
+  levels:
+    com.leaveflow: INFO
+    com.leaveflow: DEBUG
+    io.micronaut.security: WARN
+    io.micronaut.http: WARN
+    root: WARN
+     
