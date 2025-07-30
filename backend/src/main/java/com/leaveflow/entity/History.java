@@ -1,43 +1,54 @@
 package com.leaveflow.entity;
 
-import io.micronaut.data.annotation.GeneratedValue;
-import io.micronaut.data.annotation.Id;
-import io.micronaut.data.annotation.MappedEntity;
-import io.micronaut.data.annotation.DateCreated;
-
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
 
-@MappedEntity("history")
+@Entity
+@Table(name = "history")
 public class History {
     
     @Id
-    @GeneratedValue(GeneratedValue.Type.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
     @NotNull
+    @Column(name = "user_id", nullable = false)
     private Long userId;
     
     @NotNull
+    @Column(name = "leave_id", nullable = false)
     private Long leaveId;
     
     @NotBlank
+    @Column(name = "action", nullable = false)
     private String action; // APPLIED, APPROVED, REJECTED, MODIFIED, CANCELLED
     
     @NotBlank
+    @Column(name = "description", nullable = false)
     private String description;
     
+    @Column(name = "performed_by")
     private Long performedBy; // User ID who performed the action
     
+    @Column(name = "old_status")
     private String oldStatus;
+    
+    @Column(name = "new_status")
     private String newStatus;
     
+    @Column(name = "additional_data")
     private String additionalData; // JSON string for any additional data
     
-    @DateCreated
+    @Column(name = "timestamp", nullable = false)
     private LocalDateTime timestamp;
+    
+    @PrePersist
+    protected void onCreate() {
+        timestamp = LocalDateTime.now();
+    }
     
     // Constructors
     public History() {}

@@ -9,6 +9,13 @@ import {
   ApiResponse, 
   ApiError 
 } from '../interfaces/auth.interface';
+import { 
+  LeaveResponse, 
+  CreateLeaveRequest, 
+  ApproveLeaveRequest, 
+  LeaveBalance, 
+  User as LeaveUser 
+} from '../interfaces/leave.interface';
 import { AuditLoggerService } from './audit-logger.service';
 
 @Injectable({
@@ -51,6 +58,16 @@ export class ApiService {
       // Server-side error
       errorMessage = `Server Error: ${error.status} - ${error.message}`;
     }
+
+    // Enhanced console logging with red error messages
+    console.group(`%c🔴 API ERROR: ${method} ${url}`, 'color: red; font-weight: bold;');
+    console.error(`%cStatus: ${error.status}`, 'color: red;');
+    console.error(`%cMessage: ${errorMessage}`, 'color: red;');
+    console.error(`%cResponse Time: ${responseTime}ms`, 'color: orange;');
+    if (error.error) {
+      console.error(`%cError Details:`, 'color: red;', error.error);
+    }
+    console.groupEnd();
 
     // Log the API error
     this.auditLogger.logApiCall(method, url, error.status, responseTime, error);
@@ -104,6 +121,13 @@ export class ApiService {
     return httpRequest.pipe(
       map((response: T) => {
         const responseTime = Date.now() - startTime;
+        
+        // Enhanced console logging for successful requests
+        console.group(`%c✅ API SUCCESS: ${method} ${url}`, 'color: green; font-weight: bold;');
+        console.log(`%cStatus: 200 OK`, 'color: green;');
+        console.log(`%cResponse Time: ${responseTime}ms`, 'color: blue;');
+        console.log(`%cResponse:`, 'color: green;', response);
+        console.groupEnd();
         
         // Log successful API call
         this.auditLogger.logApiCall(method, url, 200, responseTime);
@@ -261,7 +285,108 @@ export class ApiService {
     return this.token;
   }
 
-  // Future API methods can be added here (leaves, users, etc.)
+  // Leave Management Methods
+
+  /**
+   * Create a new leave request
+   */
+  createLeave(request: CreateLeaveRequest): Observable<ApiResponse<LeaveResponse>> {
+    this.auditLogger.logInfo('API', 'Creating Leave Request', {
+      leaveType: request.leaveType,
+      startDate: request.startDate,
+      endDate: request.endDate,
+      duration: request.duration
+    });
+
+    return this.request<LeaveResponse>('POST', '/leaves', request);
+  }
+
+  /**
+   * Get current user's leave requests
+   */
+  getMyLeaves(): Observable<ApiResponse<LeaveResponse[]>> {
+    return this.request<LeaveResponse[]>('GET', '/leaves/my');
+  }
+
+  /**
+   * Get leave balance for current user
+   */
+  getLeaveBalance(): Observable<ApiResponse<LeaveBalance>> {
+    return this.request<LeaveBalance>('GET', '/leaves/balance');
+  }
+
+  /**
+   * Get specific leave by ID
+   */
+  getLeaveById(id: number): Observable<ApiResponse<LeaveResponse>> {
+    return this.request<LeaveResponse>('GET', `/leaves/${id}`);
+  }
+
+  /**
+   * Delete leave request (only if pending)
+   */
+  deleteLeave(id: number): Observable<ApiResponse<void>> {
+    return this.request<void>('DELETE', `/leaves/${id}`);
+  }
+
+  // Admin Methods
+
+  /**
+   * Get all leave requests (Admin only)
+   */
+  getAllLeaves(): Observable<ApiResponse<LeaveResponse[]>> {
+    return this.request<LeaveResponse[]>('GET', '/leaves');
+  }
+
+  /**
+   * Get pending leave requests (Admin only)
+   */
+  getPendingLeaves(): Observable<ApiResponse<LeaveResponse[]>> {
+    return this.request<LeaveResponse[]>('GET', '/leaves/pending');
+  }
+
+  /**
+   * Get leaves by status (Admin only)
+   */
+  getLeavesByStatus(status: string): Observable<ApiResponse<LeaveResponse[]>> {
+    return this.request<LeaveResponse[]>('GET', `/leaves/status/${status}`);
+  }
+
+  /**
+   * Approve or reject leave request (Admin only)
+   */
+  approveLeave(id: number, request: ApproveLeaveRequest): Observable<ApiResponse<LeaveResponse>> {
+    this.auditLogger.logInfo('API', 'Approving Leave Request', {
+      leaveId: id,
+      status: request.status,
+      comments: request.comments
+    });
+
+    return this.request<LeaveResponse>('PUT', `/leaves/${id}/approve`, request);
+  }
+
+  /**
+   * Get all users (Admin only)
+   */
+  getAllUsers(): Observable<ApiResponse<LeaveUser[]>> {
+    return this.request<LeaveUser[]>('GET', '/admin/users');
+  }
+
+  /**
+   * Get database status (Admin only)
+   */
+  getDatabaseStatus(): Observable<ApiResponse<any>> {
+    return this.request<any>('GET', '/admin/db-status');
+  }
+
+  /**
+   * Create test data (Admin only)
+   */
+  createTestData(): Observable<ApiResponse<any>> {
+    return this.request<any>('GET', '/admin/create-test-data');
+  }
+
+  // Utility Methods
 
   /**
    * Health check endpoint

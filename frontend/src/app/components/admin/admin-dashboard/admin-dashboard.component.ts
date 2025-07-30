@@ -1,871 +1,975 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { RouterModule, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { ApiService } from '../../../services/api.service';
-import { AuditLoggerService } from '../../../services/audit-logger.service';
+import { UserResponse } from '../../../interfaces/auth.interface';
+import { LeaveResponse, User, LeaveType, LeaveStatus } from '../../../interfaces/leave.interface';
 
-interface Leave {
-  id: number;
-  userId: number;
-  userName: string;
-  userEmail: string;
-  leaveType: string;
-  startDate: string;
-  endDate: string;
-  duration: number;
-  reason: string;
-  status: string;
-  createdAt: string;
-  comments?: string;
-  approvedByName?: string;
-}
-
-interface User {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  active: boolean;
-  annualLeaveBalance: number;
-  sickLeaveBalance: number;
-  casualLeaveBalance: number;
-  createdAt: string;
+interface SystemStats {
+  totalUsers: number;
+  totalLeaves: number;
+  pendingLeaves: number;
+  approvedLeaves: number;
+  rejectedLeaves: number;
+  activeEmployees: number;
 }
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule],
   template: `
-    <div class="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
-      <!-- Navigation Bar -->
-      <nav class="bg-white shadow-lg border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex justify-between h-16">
-            <!-- Logo and Title -->
-            <div class="flex items-center">
-              <div class="flex-shrink-0 flex items-center">
-                <div class="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center mr-3">
-                  <i class="fas fa-cog text-white text-lg"></i>
+    <div class="admin-dashboard-container">
+      <!-- Header -->
+      <div class="dashboard-header">
+        <div class="header-content">
+          <div class="header-text">
+            <h1>Admin Dashboard</h1>
+            <p>System overview and leave management</p>
                 </div>
-                <div>
-                  <h1 class="text-xl font-bold text-gray-900">LeaveFlow Admin</h1>
-                  <p class="text-xs text-gray-500">Administrative Dashboard</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- User Info and Actions -->
-            <div class="flex items-center space-x-4">
-              <div class="flex items-center space-x-3">
-                <div class="text-right">
-                  <p class="text-sm font-medium text-gray-900">{{currentUser?.firstName}} {{currentUser?.lastName}}</p>
-                  <p class="text-xs text-gray-500">Administrator</p>
-                </div>
-                <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                  <span class="text-white font-semibold text-sm">{{getUserInitials()}}</span>
-                </div>
-              </div>
-              <button 
-                (click)="goToDashboard()"
-                class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200">
-                <i class="fas fa-user mr-2"></i>
-                Employee View
+          <div class="header-actions">
+            <button class="btn-secondary" (click)="refreshData()">
+              <span class="btn-icon">🔄</span>
+              Refresh
               </button>
-              <button 
-                (click)="logout()"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200">
-                <i class="fas fa-sign-out-alt mr-2"></i>
-                Logout
+            <button class="btn-primary" (click)="navigateToUserManagement()">
+              <span class="btn-icon">👥</span>
+              Manage Users
               </button>
             </div>
           </div>
         </div>
-      </nav>
 
-      <!-- Main Content -->
-      <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="mb-8">
-          <h2 class="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
-          <p class="text-lg text-gray-600">Manage leave requests and system users</p>
+      <!-- System Stats -->
+      <div class="stats-section">
+        <h2>System Overview</h2>
+        <div class="stats-grid" *ngIf="systemStats">
+          <div class="stat-card users">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <h3>Total Users</h3>
+              <div class="stat-number">{{systemStats.totalUsers}}</div>
+              <p class="stat-detail">{{systemStats.activeEmployees}} active employees</p>
+            </div>
         </div>
 
-        <!-- Quick Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-            <div class="flex items-center">
-              <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mr-4">
-                <i class="fas fa-clock text-yellow-600 text-xl"></i>
-              </div>
-              <div>
-                <p class="text-sm font-medium text-gray-600">Pending Requests</p>
-                <p class="text-2xl font-bold text-gray-900">{{stats.pendingRequests}}</p>
+          <div class="stat-card leaves">
+            <div class="stat-icon">📋</div>
+            <div class="stat-info">
+              <h3>Total Leaves</h3>
+              <div class="stat-number">{{systemStats.totalLeaves}}</div>
+              <p class="stat-detail">All time requests</p>
+            </div>
+          </div>
+
+          <div class="stat-card pending">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-info">
+              <h3>Pending</h3>
+              <div class="stat-number">{{systemStats.pendingLeaves}}</div>
+              <p class="stat-detail">Awaiting approval</p>
+            </div>
+          </div>
+
+          <div class="stat-card approved">
+            <div class="stat-icon">✅</div>
+            <div class="stat-info">
+              <h3>Approved</h3>
+              <div class="stat-number">{{systemStats.approvedLeaves}}</div>
+              <p class="stat-detail">This month</p>
               </div>
             </div>
           </div>
 
-          <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-            <div class="flex items-center">
-              <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                <i class="fas fa-check-circle text-green-600 text-xl"></i>
-              </div>
-              <div>
-                <p class="text-sm font-medium text-gray-600">Approved This Month</p>
-                <p class="text-2xl font-bold text-gray-900">{{stats.approvedThisMonth}}</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-            <div class="flex items-center">
-              <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                <i class="fas fa-users text-blue-600 text-xl"></i>
-              </div>
-              <div>
-                <p class="text-sm font-medium text-gray-600">Total Users</p>
-                <p class="text-2xl font-bold text-gray-900">{{stats.totalUsers}}</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-            <div class="flex items-center">
-              <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
-                <i class="fas fa-chart-line text-purple-600 text-xl"></i>
-              </div>
-              <div>
-                <p class="text-sm font-medium text-gray-600">Total Requests</p>
-                <p class="text-2xl font-bold text-gray-900">{{stats.totalRequests}}</p>
-              </div>
-            </div>
+        <div class="loading-placeholder" *ngIf="loadingStats">
+          <p>Loading system statistics...</p>
           </div>
         </div>
 
-        <!-- Tab Navigation -->
-        <div class="bg-white rounded-xl shadow-lg border border-gray-200 mb-8">
-          <div class="border-b border-gray-200">
-            <nav class="flex space-x-8 px-6" aria-label="Tabs">
-              <button 
-                (click)="activeTab = 'pending'"
-                [ngClass]="{'border-purple-500 text-purple-600': activeTab === 'pending', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'pending'}"
-                class="py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200">
-                <i class="fas fa-clock mr-2"></i>
-                Pending Requests ({{pendingLeaves.length}})
-              </button>
-              <button 
-                (click)="activeTab = 'all'"
-                [ngClass]="{'border-purple-500 text-purple-600': activeTab === 'all', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'all'}"
-                class="py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200">
-                <i class="fas fa-list mr-2"></i>
-                All Requests ({{allLeaves.length}})
-              </button>
-              <button 
-                (click)="activeTab = 'users'"
-                [ngClass]="{'border-purple-500 text-purple-600': activeTab === 'users', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'users'}"
-                class="py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200">
-                <i class="fas fa-users mr-2"></i>
-                Users ({{users.length}})
-              </button>
-            </nav>
+      <!-- Pending Approvals -->
+      <div class="pending-section">
+        <div class="section-header">
+          <h2>Pending Approvals</h2>
+          <span class="pending-count" *ngIf="pendingLeaves.length > 0">
+            {{pendingLeaves.length}} request{{pendingLeaves.length !== 1 ? 's' : ''}} pending
+          </span>
           </div>
 
-          <!-- Pending Requests Tab -->
-          <div *ngIf="activeTab === 'pending'" class="p-6">
-            <div class="flex justify-between items-center mb-6">
-              <h3 class="text-xl font-bold text-gray-900">Pending Leave Requests</h3>
-              <button 
-                (click)="loadPendingLeaves()"
-                class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200">
-                <i class="fas fa-refresh mr-2"></i>
-                Refresh
-              </button>
+        <div class="pending-grid" *ngIf="!loadingPending && pendingLeaves.length > 0">
+          <div class="pending-card" *ngFor="let leave of pendingLeaves">
+            <div class="card-header">
+              <div class="employee-info">
+                <h4>{{leave.userName || 'Unknown User'}}</h4>
+                <p>{{leave.userEmail}}</p>
             </div>
-
-            <div *ngIf="isLoadingPending" class="flex justify-center items-center py-12">
-              <div class="text-center">
-                <i class="fas fa-spinner fa-spin text-purple-500 text-3xl mb-4"></i>
-                <p class="text-gray-600">Loading pending requests...</p>
+              <div class="leave-type-badge" [ngClass]="leave.leaveType.toLowerCase()">
+                {{formatLeaveType(leave.leaveType)}}
               </div>
             </div>
 
-            <div *ngIf="!isLoadingPending && pendingLeaves.length === 0" class="text-center py-12">
-              <i class="fas fa-check-circle text-green-400 text-4xl mb-4"></i>
-              <p class="text-xl text-gray-600 mb-2">No pending requests!</p>
-              <p class="text-gray-500">All caught up with leave approvals.</p>
+            <div class="card-body">
+              <div class="leave-details">
+                <div class="detail-item">
+                  <strong>Duration:</strong>
+                  <span>{{leave.duration}} day{{leave.duration !== 1 ? 's' : ''}}</span>
             </div>
+                <div class="detail-item">
+                  <strong>Dates:</strong>
+                  <span>{{formatDate(leave.startDate)}} - {{formatDate(leave.endDate)}}</span>
+                    </div>
+                <div class="detail-item" *ngIf="leave.reason">
+                  <strong>Reason:</strong>
+                  <span>{{leave.reason}}</span>
+                      </div>
+                <div class="detail-item">
+                  <strong>Submitted:</strong>
+                  <span>{{formatDate(leave.createdAt)}}</span>
+                      </div>
+                      </div>
+                    </div>
 
-            <div *ngIf="!isLoadingPending && pendingLeaves.length > 0" class="space-y-4">
-              <div *ngFor="let leave of pendingLeaves" class="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                <div class="flex justify-between items-start">
-                  <div class="flex-1">
-                    <div class="flex items-center mb-2">
-                      <h4 class="text-lg font-semibold text-gray-900 mr-3">{{leave.userName}}</h4>
-                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                            [ngClass]="{
-                              'bg-green-100 text-green-800': leave.leaveType === 'ANNUAL',
-                              'bg-blue-100 text-blue-800': leave.leaveType === 'SICK',
-                              'bg-purple-100 text-purple-800': leave.leaveType === 'CASUAL',
-                              'bg-red-100 text-red-800': leave.leaveType === 'EMERGENCY'
-                            }">
-                        {{getLeaveTypeLabel(leave.leaveType)}}
-                      </span>
-                    </div>
-                    <p class="text-sm text-gray-600 mb-2">{{leave.userEmail}}</p>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div>
-                        <p class="text-sm font-medium text-gray-700">Duration</p>
-                        <p class="text-sm text-gray-900">{{leave.duration}} days</p>
-                      </div>
-                      <div>
-                        <p class="text-sm font-medium text-gray-700">Dates</p>
-                        <p class="text-sm text-gray-900">{{formatDate(leave.startDate)}} - {{formatDate(leave.endDate)}}</p>
-                      </div>
-                      <div>
-                        <p class="text-sm font-medium text-gray-700">Requested</p>
-                        <p class="text-sm text-gray-900">{{formatDate(leave.createdAt)}}</p>
-                      </div>
-                    </div>
-                    <div *ngIf="leave.reason">
-                      <p class="text-sm font-medium text-gray-700 mb-1">Reason</p>
-                      <p class="text-sm text-gray-900">{{leave.reason}}</p>
-                    </div>
-                  </div>
-                  <div class="ml-6 flex space-x-3">
+            <div class="card-actions">
                     <button 
-                      (click)="showApprovalModal(leave, 'APPROVED')"
-                      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 transition-all duration-200">
-                      <i class="fas fa-check mr-2"></i>
-                      Approve
+                class="btn-approve"
+                (click)="approveLeave(leave)"
+                [disabled]="processingLeaves.has(leave.id)">
+                <span *ngIf="!processingLeaves.has(leave.id)">✅ Approve</span>
+                <span *ngIf="processingLeaves.has(leave.id)" class="processing">
+                  <span class="spinner"></span>Processing...
+                </span>
                     </button>
                     <button 
-                      (click)="showApprovalModal(leave, 'REJECTED')"
-                      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 transition-all duration-200">
-                      <i class="fas fa-times mr-2"></i>
-                      Reject
+                class="btn-reject"
+                (click)="rejectLeave(leave)"
+                [disabled]="processingLeaves.has(leave.id)">
+                <span *ngIf="!processingLeaves.has(leave.id)">❌ Reject</span>
+                <span *ngIf="processingLeaves.has(leave.id)" class="processing">
+                  <span class="spinner"></span>Processing...
+                </span>
                     </button>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
 
-          <!-- All Requests Tab -->
-          <div *ngIf="activeTab === 'all'" class="p-6">
-            <div class="flex justify-between items-center mb-6">
-              <h3 class="text-xl font-bold text-gray-900">All Leave Requests</h3>
-              <div class="flex space-x-4">
-                <select 
-                  [(ngModel)]="statusFilter"
-                  (ngModelChange)="filterLeaves()"
-                  class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                  <option value="">All Status</option>
-                  <option value="PENDING">Pending</option>
-                  <option value="APPROVED">Approved</option>
-                  <option value="REJECTED">Rejected</option>
-                </select>
-                <button 
-                  (click)="loadAllLeaves()"
-                  class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200">
-                  <i class="fas fa-refresh mr-2"></i>
-                  Refresh
-                </button>
+        <div class="empty-state" *ngIf="!loadingPending && pendingLeaves.length === 0">
+          <div class="empty-icon">🎉</div>
+          <h3>All caught up!</h3>
+          <p>No pending leave requests to review.</p>
+            </div>
+
+        <div class="loading-placeholder" *ngIf="loadingPending">
+          <p>Loading pending requests...</p>
               </div>
             </div>
 
-            <div *ngIf="isLoadingAll" class="flex justify-center items-center py-12">
-              <div class="text-center">
-                <i class="fas fa-spinner fa-spin text-purple-500 text-3xl mb-4"></i>
-                <p class="text-gray-600">Loading all requests...</p>
-              </div>
-            </div>
-
-            <div *ngIf="!isLoadingAll && filteredLeaves.length === 0" class="text-center py-12">
-              <i class="fas fa-inbox text-gray-400 text-4xl mb-4"></i>
-              <p class="text-xl text-gray-600 mb-2">No leave requests found</p>
-              <p class="text-gray-500">No requests match your current filter.</p>
-            </div>
-
-            <div *ngIf="!isLoadingAll && filteredLeaves.length > 0" class="overflow-x-auto">
-              <table class="w-full">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <tr *ngFor="let leave of filteredLeaves" class="hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <p class="text-sm font-medium text-gray-900">{{leave.userName}}</p>
-                        <p class="text-sm text-gray-500">{{leave.userEmail}}</p>
+      <!-- Recent Activity -->
+      <div class="activity-section">
+        <h2>Recent Activity</h2>
+        
+        <div class="activity-list" *ngIf="recentActivity.length > 0">
+          <div class="activity-item" *ngFor="let leave of recentActivity">
+            <div class="activity-status" [ngClass]="leave.status.toLowerCase()">
+              <span class="status-indicator"></span>
                       </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                            [ngClass]="{
-                              'bg-green-100 text-green-800': leave.leaveType === 'ANNUAL',
-                              'bg-blue-100 text-blue-800': leave.leaveType === 'SICK',
-                              'bg-purple-100 text-purple-800': leave.leaveType === 'CASUAL',
-                              'bg-red-100 text-red-800': leave.leaveType === 'EMERGENCY'
-                            }">
-                        {{getLeaveTypeLabel(leave.leaveType)}}
+            <div class="activity-details">
+              <div class="activity-main">
+                <strong>{{leave.userName || 'Unknown User'}}</strong>
+                <span class="activity-action">
+                  {{getActivityAction(leave.status)}}
                       </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {{leave.duration}} days
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {{formatDate(leave.startDate)}} - {{formatDate(leave.endDate)}}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                            [ngClass]="{
-                              'bg-yellow-100 text-yellow-800': leave.status === 'PENDING',
-                              'bg-green-100 text-green-800': leave.status === 'APPROVED',
-                              'bg-red-100 text-red-800': leave.status === 'REJECTED'
-                            }">
-                        {{leave.status}}
+                <span class="leave-type-badge small" [ngClass]="leave.leaveType.toLowerCase()">
+                  {{formatLeaveType(leave.leaveType)}}
                       </span>
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                      {{leave.reason || 'No reason provided'}}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button 
-                        *ngIf="leave.status === 'PENDING'"
-                        (click)="showApprovalModal(leave, 'APPROVED')"
-                        class="text-green-600 hover:text-green-900 mr-3 transition-colors">
-                        <i class="fas fa-check mr-1"></i>
-                        Approve
-                      </button>
-                      <button 
-                        *ngIf="leave.status === 'PENDING'"
-                        (click)="showApprovalModal(leave, 'REJECTED')"
-                        class="text-red-600 hover:text-red-900 transition-colors">
-                        <i class="fas fa-times mr-1"></i>
-                        Reject
-                      </button>
-                      <span *ngIf="leave.status !== 'PENDING'" class="text-gray-400">
-                        {{leave.approvedByName || 'System'}}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              </div>
+              <div class="activity-meta">
+                {{formatDate(leave.startDate)}} - {{formatDate(leave.endDate)}}
+                ({{leave.duration}} day{{leave.duration !== 1 ? 's' : ''}})
+                • {{formatRelativeTime(leave.updatedAt)}}
+              </div>
+            </div>
             </div>
           </div>
 
-          <!-- Users Tab -->
-          <div *ngIf="activeTab === 'users'" class="p-6">
-            <div class="flex justify-between items-center mb-6">
-              <h3 class="text-xl font-bold text-gray-900">System Users</h3>
-              <button 
-                (click)="loadUsers()"
-                class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200">
-                <i class="fas fa-refresh mr-2"></i>
-                Refresh
+        <div class="view-all-activity" *ngIf="recentActivity.length > 0">
+          <button class="btn-link" (click)="navigateToAllLeaves()">
+            View all leave requests →
               </button>
             </div>
 
-            <div *ngIf="isLoadingUsers" class="flex justify-center items-center py-12">
-              <div class="text-center">
-                <i class="fas fa-spinner fa-spin text-purple-500 text-3xl mb-4"></i>
-                <p class="text-gray-600">Loading users...</p>
+        <div class="loading-placeholder" *ngIf="loadingActivity">
+          <p>Loading recent activity...</p>
               </div>
             </div>
 
-            <div *ngIf="!isLoadingUsers && users.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div *ngFor="let user of users" class="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                <div class="flex items-center mb-4">
-                  <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mr-4">
-                    <span class="text-white font-semibold text-sm">{{getUserInitials(user.firstName, user.lastName)}}</span>
+      <!-- Quick Actions -->
+      <div class="quick-actions-section">
+        <h2>Quick Actions</h2>
+        <div class="actions-grid">
+          <button class="action-card" (click)="navigateToAllLeaves()">
+            <div class="action-icon">📋</div>
+            <div class="action-text">
+              <h4>All Leave Requests</h4>
+              <p>View and manage all leave requests</p>
                   </div>
-                  <div>
-                    <h4 class="text-lg font-semibold text-gray-900">{{user.firstName}} {{user.lastName}}</h4>
-                    <p class="text-sm text-gray-600">{{user.email}}</p>
-                  </div>
-                </div>
-                
-                <div class="space-y-2 mb-4">
-                  <div class="flex justify-between">
-                    <span class="text-sm font-medium text-gray-700">Role:</span>
-                    <span class="text-sm text-gray-900">{{user.role}}</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-sm font-medium text-gray-700">Status:</span>
-                    <span [ngClass]="{'text-green-600': user.active, 'text-red-600': !user.active}" class="text-sm font-medium">
-                      {{user.active ? 'Active' : 'Inactive'}}
-                    </span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-sm font-medium text-gray-700">Annual Leave:</span>
-                    <span class="text-sm text-gray-900">{{user.annualLeaveBalance}} days</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-sm font-medium text-gray-700">Sick Leave:</span>
-                    <span class="text-sm text-gray-900">{{user.sickLeaveBalance}} days</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-sm font-medium text-gray-700">Casual Leave:</span>
-                    <span class="text-sm text-gray-900">{{user.casualLeaveBalance}} days</span>
-                  </div>
-                </div>
-                
-                <div class="text-xs text-gray-500">
-                  Joined: {{formatDate(user.createdAt)}}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+          </button>
 
-      <!-- Approval Modal -->
-      <div *ngIf="showModal" class="fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" (click)="closeModal()"></div>
-          
-          <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-              <div class="sm:flex sm:items-start">
-                <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full sm:mx-0 sm:h-10 sm:w-10"
-                     [ngClass]="{'bg-green-100': modalAction === 'APPROVED', 'bg-red-100': modalAction === 'REJECTED'}">
-                  <i [ngClass]="{'fas fa-check text-green-600': modalAction === 'APPROVED', 'fas fa-times text-red-600': modalAction === 'REJECTED'}"></i>
-                </div>
-                <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                  <h3 class="text-lg leading-6 font-medium text-gray-900">
-                    {{modalAction === 'APPROVED' ? 'Approve' : 'Reject'}} Leave Request
-                  </h3>
-                  <div class="mt-2">
-                    <p class="text-sm text-gray-500">
-                      {{modalAction === 'APPROVED' ? 'Approve' : 'Reject'}} leave request for <strong>{{selectedLeave?.userName}}</strong>?
-                    </p>
-                    <div class="mt-4">
-                      <label class="block text-sm font-medium text-gray-700 mb-2">Comments (Optional)</label>
-                      <textarea 
-                        [(ngModel)]="approvalComments"
-                        rows="3"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        placeholder="Add any comments about this decision..."></textarea>
-                    </div>
+          <button class="action-card" (click)="navigateToUserManagement()">
+            <div class="action-icon">👥</div>
+            <div class="action-text">
+              <h4>User Management</h4>
+              <p>Manage employees and permissions</p>
                   </div>
+          </button>
+
+          <button class="action-card" (click)="navigateToReports()">
+            <div class="action-icon">📊</div>
+            <div class="action-text">
+              <h4>Reports</h4>
+              <p>Generate leave reports and analytics</p>
                 </div>
-              </div>
-            </div>
-            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-              <button 
-                (click)="confirmApproval()"
-                [disabled]="isProcessingApproval"
-                class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white sm:ml-3 sm:w-auto sm:text-sm transition-all duration-200"
-                [ngClass]="{'bg-green-600 hover:bg-green-700': modalAction === 'APPROVED', 'bg-red-600 hover:bg-red-700': modalAction === 'REJECTED'}">
-                <span *ngIf="!isProcessingApproval">
-                  {{modalAction === 'APPROVED' ? 'Approve' : 'Reject'}}
-                </span>
-                <span *ngIf="isProcessingApproval" class="flex items-center">
-                  <i class="fas fa-spinner fa-spin mr-2"></i>
-                  Processing...
-                </span>
+          </button>
+
+          <button class="action-card" (click)="navigateToSettings()">
+            <div class="action-icon">⚙️</div>
+            <div class="action-text">
+              <h4>System Settings</h4>
+              <p>Configure leave policies and rules</p>
+                </div>
               </button>
-              <button 
-                (click)="closeModal()"
-                [disabled]="isProcessingApproval"
-                class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-all duration-200">
-                Cancel
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
   `,
   styles: [`
-    .grid {
+    .admin-dashboard-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .dashboard-header {
+      margin-bottom: 32px;
+    }
+
+    .header-content {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .header-text h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .header-text p {
+      color: #6b7280;
+      font-size: 1.1rem;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-primary, .btn-secondary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      border-color: #2563eb;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #6b7280;
+      border-color: #d1d5db;
+    }
+
+    .btn-secondary:hover {
+      background: #f9fafb;
+      border-color: #9ca3af;
+    }
+
+    .btn-icon {
+      font-size: 1rem;
+    }
+
+    .stats-section, .pending-section, .activity-section, .quick-actions-section {
+      margin-bottom: 40px;
+    }
+
+    .stats-section h2, .pending-section h2, .activity-section h2, .quick-actions-section h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 20px;
+    }
+
+    .stats-grid {
       display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
     }
-    
-    .grid-cols-1 {
-      grid-template-columns: repeat(1, minmax(0, 1fr));
+
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border-left: 4px solid;
+      display: flex;
+      align-items: center;
+      gap: 16px;
     }
-    
-    @media (min-width: 768px) {
-      .md\\:grid-cols-2 {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      
-      .md\\:grid-cols-3 {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-      
-      .md\\:grid-cols-4 {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-      }
+
+    .stat-card.users { border-left-color: #3b82f6; }
+    .stat-card.leaves { border-left-color: #10b981; }
+    .stat-card.pending { border-left-color: #f59e0b; }
+    .stat-card.approved { border-left-color: #10b981; }
+
+    .stat-icon {
+      font-size: 2.5rem;
+      opacity: 0.8;
     }
-    
-    @media (min-width: 1024px) {
-      .lg\\:grid-cols-3 {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
+
+    .stat-info h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 8px;
     }
-    
-    .gap-4 {
-      gap: 1rem;
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 4px;
     }
-    
-    .gap-6 {
-      gap: 1.5rem;
+
+    .stat-detail {
+      font-size: 0.875rem;
+      color: #6b7280;
     }
-    
-    .space-y-2 > * + * {
-      margin-top: 0.5rem;
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
-    
-    .space-y-4 > * + * {
-      margin-top: 1rem;
+
+    .pending-count {
+      background: #fef3c7;
+      color: #92400e;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.875rem;
+      font-weight: 600;
     }
-    
-    .space-x-3 > * + * {
-      margin-left: 0.75rem;
+
+    .pending-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 20px;
     }
-    
-    .space-x-4 > * + * {
-      margin-left: 1rem;
-    }
-    
-    .space-x-8 > * + * {
-      margin-left: 2rem;
-    }
-    
-    .overflow-x-auto {
-      overflow-x: auto;
-    }
-    
-    .max-w-xs {
-      max-width: 20rem;
-    }
-    
-    .truncate {
+
+    .pending-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e5e7eb;
       overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
-    
-    .divide-y > * + * {
-      border-top-width: 1px;
+
+    .card-header {
+      padding: 20px;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
     }
-    
-    .divide-gray-200 > * + * {
-      border-color: rgb(229 231 235);
+
+    .employee-info h4 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 4px;
     }
-    
-    .border-b-2 {
-      border-bottom-width: 2px;
+
+    .employee-info p {
+      color: #6b7280;
+      font-size: 0.875rem;
     }
-    
-    .z-50 {
-      z-index: 50;
+
+    .leave-type-badge {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
-    
-    .bg-opacity-75 {
-      background-opacity: 0.75;
+
+    .leave-type-badge.annual {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .leave-type-badge.sick {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .leave-type-badge.casual {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .leave-type-badge.emergency {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .card-body {
+      padding: 20px;
+    }
+
+    .detail-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      gap: 16px;
+    }
+
+    .detail-item strong {
+      color: #374151;
+      font-weight: 600;
+      min-width: 80px;
+    }
+
+    .card-actions {
+      padding: 16px 20px;
+      background: #f9fafb;
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-approve, .btn-reject {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-approve {
+      background: #10b981;
+      color: white;
+      border-color: #10b981;
+    }
+
+    .btn-approve:hover:not(:disabled) {
+      background: #059669;
+      border-color: #059669;
+    }
+
+    .btn-reject {
+      background: #ef4444;
+      color: white;
+      border-color: #ef4444;
+    }
+
+    .btn-reject:hover:not(:disabled) {
+      background: #dc2626;
+      border-color: #dc2626;
+    }
+
+    .btn-approve:disabled, .btn-reject:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .processing {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid transparent;
+      border-top: 2px solid currentColor;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .empty-state, .loading-placeholder {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6b7280;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .empty-icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .activity-list {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .activity-item {
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid #f3f4f6;
+      gap: 16px;
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .activity-status.approved { background: #d1fae5; }
+    .activity-status.rejected { background: #fee2e2; }
+    .activity-status.pending { background: #fef3c7; }
+
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .activity-status.approved .status-indicator { background: #10b981; }
+    .activity-status.rejected .status-indicator { background: #ef4444; }
+    .activity-status.pending .status-indicator { background: #f59e0b; }
+
+    .activity-details {
+      flex: 1;
+    }
+
+    .activity-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+    }
+
+    .activity-action {
+      color: #6b7280;
+    }
+
+    .leave-type-badge.small {
+      padding: 2px 8px;
+      font-size: 0.6rem;
+    }
+
+    .activity-meta {
+      color: #9ca3af;
+      font-size: 0.875rem;
+    }
+
+    .view-all-activity {
+      text-align: center;
+      padding: 16px;
+      border-top: 1px solid #f3f4f6;
+      background: white;
+      border-radius: 0 0 12px 12px;
+    }
+
+    .btn-link {
+      background: none;
+      border: none;
+      color: #3b82f6;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: underline;
+    }
+
+    .btn-link:hover {
+      color: #2563eb;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .action-card {
+      background: white;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      text-align: left;
+    }
+
+    .action-card:hover {
+      border-color: #3b82f6;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .action-icon {
+      font-size: 2.5rem;
+      opacity: 0.8;
+    }
+
+    .action-text h4 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 4px;
+    }
+
+    .action-text p {
+      color: #6b7280;
+      font-size: 0.875rem;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .admin-dashboard-container {
+        padding: 16px;
+      }
+
+      .header-content {
+        padding: 20px;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .header-actions {
+        justify-content: center;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .pending-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .actions-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .activity-main {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+
+      .card-actions {
+        flex-direction: column;
+      }
+
+      .detail-item {
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .detail-item strong {
+        min-width: auto;
+      }
     }
   `]
 })
-export class AdminDashboardComponent implements OnInit, OnDestroy {
-  currentUser: any = null;
-  activeTab = 'pending';
+export class AdminDashboardComponent implements OnInit {
+  currentUser: UserResponse | null = null;
+  systemStats: SystemStats | null = null;
+  pendingLeaves: LeaveResponse[] = [];
+  recentActivity: LeaveResponse[] = [];
+  processingLeaves = new Set<number>();
   
-  pendingLeaves: Leave[] = [];
-  allLeaves: Leave[] = [];
-  filteredLeaves: Leave[] = [];
-  users: User[] = [];
-  
-  isLoadingPending = false;
-  isLoadingAll = false;
-  isLoadingUsers = false;
-  
-  statusFilter = '';
-  
-  // Modal state
-  showModal = false;
-  selectedLeave: Leave | null = null;
-  modalAction = '';
-  approvalComments = '';
-  isProcessingApproval = false;
-  
-  stats = {
-    pendingRequests: 0,
-    approvedThisMonth: 0,
-    totalUsers: 0,
-    totalRequests: 0
-  };
-
-  private componentStartTime: number = Date.now();
+  loadingStats = true;
+  loadingPending = true;
+  loadingActivity = true;
 
   constructor(
     private apiService: ApiService,
-    private auditLogger: AuditLoggerService,
     private router: Router
   ) {}
 
   ngOnInit() {
     this.currentUser = this.apiService.getCurrentUser();
-    
-    // Check if user is admin
-    if (this.currentUser?.role !== 'ADMIN') {
-      this.auditLogger.logWarn('AUTH', 'Unauthorized Admin Access', {
-        userId: this.currentUser?.id,
-        userRole: this.currentUser?.role,
-        redirectTo: '/dashboard'
-      });
-      this.router.navigate(['/dashboard']);
-      return;
-    }
-
-    this.auditLogger.logComponentLifecycle('AdminDashboardComponent', 'OnInit', {
-      userId: this.currentUser?.id,
-      timestamp: new Date().toISOString()
-    });
-
     this.loadDashboardData();
   }
 
-  ngOnDestroy() {
-    this.auditLogger.logComponentLifecycle('AdminDashboardComponent', 'OnDestroy', {
-      sessionDuration: Date.now() - this.componentStartTime,
-      userId: this.currentUser?.id
-    });
+  loadDashboardData() {
+    this.loadSystemStats();
+    this.loadPendingLeaves();
+    this.loadRecentActivity();
   }
 
-  loadDashboardData() {
-    this.loadPendingLeaves();
-    this.loadAllLeaves();
-    this.loadUsers();
-    this.updateStats();
+  loadSystemStats() {
+    this.loadingStats = true;
+    
+    // Load database status which includes user and leave counts
+    this.apiService.getDatabaseStatus().subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          const data = response.data;
+          
+          this.systemStats = {
+            totalUsers: data.userCount || 0,
+            totalLeaves: data.leaveCount || 0,
+            pendingLeaves: 0, // Will be updated from pending leaves call
+            approvedLeaves: 0, // Will be calculated from leaves data
+            rejectedLeaves: 0, // Will be calculated from leaves data
+            activeEmployees: data.users ? data.users.filter((u: any) => u.active).length : 0
+          };
+
+          // Calculate status counts from leaves data
+          if (data.leaves) {
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            
+            let approvedThisMonth = 0;
+            let rejectedTotal = 0;
+            let pendingTotal = 0;
+
+            data.leaves.forEach((leave: any) => {
+              const createdDate = new Date(leave.createdAt);
+              
+              if (leave.status === 'PENDING') {
+                pendingTotal++;
+              } else if (leave.status === 'REJECTED') {
+                rejectedTotal++;
+              } else if (leave.status === 'APPROVED') {
+                if (createdDate.getMonth() === currentMonth && 
+                    createdDate.getFullYear() === currentYear) {
+                  approvedThisMonth++;
+                }
+              }
+            });
+
+            this.systemStats.pendingLeaves = pendingTotal;
+            this.systemStats.approvedLeaves = approvedThisMonth;
+            this.systemStats.rejectedLeaves = rejectedTotal;
+          }
+        }
+        this.loadingStats = false;
+      },
+      error: (error) => {
+        console.error('Error loading system stats:', error);
+        this.loadingStats = false;
+      }
+    });
   }
 
   loadPendingLeaves() {
-    this.isLoadingPending = true;
-    this.auditLogger.logUserAction('Load Pending Leaves', 'AdminDashboardComponent', {
-      adminId: this.currentUser?.id
-    });
-
-    // Mock data - replace with actual API call
-    setTimeout(() => {
-      this.pendingLeaves = [
-        {
-          id: 1,
-          userId: 2,
-          userName: 'John Smith',
-          userEmail: 'john.smith@company.com',
-          leaveType: 'ANNUAL',
-          startDate: '2024-02-15',
-          endDate: '2024-02-19',
-          duration: 5,
-          reason: 'Family vacation',
-          status: 'PENDING',
-          createdAt: '2024-02-01'
-        },
-        {
-          id: 2,
-          userId: 3,
-          userName: 'Jane Doe',
-          userEmail: 'jane.doe@company.com',
-          leaveType: 'SICK',
-          startDate: '2024-02-10',
-          endDate: '2024-02-12',
-          duration: 3,
-          reason: 'Medical appointment',
-          status: 'PENDING',
-          createdAt: '2024-02-08'
+    this.loadingPending = true;
+    this.apiService.getPendingLeaves().subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.pendingLeaves = response.data;
         }
-      ];
-      this.isLoadingPending = false;
-    }, 1000);
-  }
-
-  loadAllLeaves() {
-    this.isLoadingAll = true;
-    this.auditLogger.logUserAction('Load All Leaves', 'AdminDashboardComponent', {
-      adminId: this.currentUser?.id
-    });
-
-    // Mock data - replace with actual API call
-    setTimeout(() => {
-      this.allLeaves = [
-        ...this.pendingLeaves,
-        {
-          id: 3,
-          userId: 4,
-          userName: 'Mike Johnson',
-          userEmail: 'mike.johnson@company.com',
-          leaveType: 'CASUAL',
-          startDate: '2024-01-20',
-          endDate: '2024-01-20',
-          duration: 1,
-          reason: 'Personal work',
-          status: 'APPROVED',
-          createdAt: '2024-01-15',
-          approvedByName: 'Admin User'
-        }
-      ];
-      this.filteredLeaves = [...this.allLeaves];
-      this.isLoadingAll = false;
-    }, 1000);
-  }
-
-  loadUsers() {
-    this.isLoadingUsers = true;
-    this.auditLogger.logUserAction('Load Users', 'AdminDashboardComponent', {
-      adminId: this.currentUser?.id
-    });
-
-    // Mock data - replace with actual API call
-    setTimeout(() => {
-      this.users = [
-        {
-          id: 2,
-          firstName: 'John',
-          lastName: 'Smith',
-          email: 'john.smith@company.com',
-          role: 'EMPLOYEE',
-          active: true,
-          annualLeaveBalance: 20,
-          sickLeaveBalance: 8,
-          casualLeaveBalance: 3,
-          createdAt: '2024-01-01'
-        },
-        {
-          id: 3,
-          firstName: 'Jane',
-          lastName: 'Doe',
-          email: 'jane.doe@company.com',
-          role: 'EMPLOYEE',
-          active: true,
-          annualLeaveBalance: 25,
-          sickLeaveBalance: 10,
-          casualLeaveBalance: 5,
-          createdAt: '2024-01-01'
-        }
-      ];
-      this.isLoadingUsers = false;
-    }, 1000);
-  }
-
-  updateStats() {
-    // Update statistics based on loaded data
-    this.stats = {
-      pendingRequests: this.pendingLeaves.length,
-      approvedThisMonth: this.allLeaves.filter(l => l.status === 'APPROVED').length,
-      totalUsers: this.users.length,
-      totalRequests: this.allLeaves.length
-    };
-  }
-
-  filterLeaves() {
-    if (this.statusFilter) {
-      this.filteredLeaves = this.allLeaves.filter(leave => leave.status === this.statusFilter);
-    } else {
-      this.filteredLeaves = [...this.allLeaves];
-    }
-  }
-
-  showApprovalModal(leave: Leave, action: string) {
-    this.selectedLeave = leave;
-    this.modalAction = action;
-    this.approvalComments = '';
-    this.showModal = true;
-    
-    this.auditLogger.logUserAction('Open Approval Modal', 'AdminDashboardComponent', {
-      leaveId: leave.id,
-      action,
-      adminId: this.currentUser?.id
-    });
-  }
-
-  confirmApproval() {
-    if (!this.selectedLeave) return;
-
-    this.isProcessingApproval = true;
-    
-    this.auditLogger.logUserAction('Process Leave Approval', 'AdminDashboardComponent', {
-      leaveId: this.selectedLeave.id,
-      action: this.modalAction,
-      comments: this.approvalComments,
-      adminId: this.currentUser?.id
-    });
-
-    // Mock API call - replace with actual implementation
-    setTimeout(() => {
-      if (this.selectedLeave) {
-        this.selectedLeave.status = this.modalAction;
-        this.selectedLeave.comments = this.approvalComments;
-        this.selectedLeave.approvedByName = this.currentUser?.firstName + ' ' + this.currentUser?.lastName;
-        
-        // Remove from pending if approved/rejected
-        this.pendingLeaves = this.pendingLeaves.filter(l => l.id !== this.selectedLeave!.id);
-        
-        // Update stats
-        this.updateStats();
-        this.filterLeaves();
+        this.loadingPending = false;
+      },
+      error: (error) => {
+        console.error('Error loading pending leaves:', error);
+        this.loadingPending = false;
       }
-      
-      this.isProcessingApproval = false;
-      this.closeModal();
-    }, 2000);
-  }
-
-  closeModal() {
-    this.showModal = false;
-    this.selectedLeave = null;
-    this.modalAction = '';
-    this.approvalComments = '';
-    this.isProcessingApproval = false;
-  }
-
-  goToDashboard() {
-    this.auditLogger.logNavigation('/admin', '/dashboard');
-    this.router.navigate(['/dashboard']);
-  }
-
-  logout() {
-    this.auditLogger.logUserAction('Logout', 'AdminDashboardComponent', {
-      userId: this.currentUser?.id
     });
-    
-    this.apiService.logout();
-    this.router.navigate(['/home']);
   }
 
-  getUserInitials(firstName?: string, lastName?: string): string {
-    if (firstName && lastName) {
-      return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-    }
-    if (!this.currentUser) return '';
-    const first = this.currentUser.firstName || '';
-    const last = this.currentUser.lastName || '';
-    return (first.charAt(0) + last.charAt(0)).toUpperCase();
+  loadRecentActivity() {
+    this.loadingActivity = true;
+    this.apiService.getAllLeaves().subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          // Get the 10 most recently updated leaves (excluding pending)
+          this.recentActivity = response.data
+            .filter(leave => leave.status !== LeaveStatus.PENDING)
+            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+            .slice(0, 10);
+        }
+        this.loadingActivity = false;
+      },
+      error: (error) => {
+        console.error('Error loading recent activity:', error);
+        this.loadingActivity = false;
+      }
+    });
   }
 
-  getLeaveTypeLabel(type: string): string {
-    const labels: { [key: string]: string } = {
-      'ANNUAL': 'Annual',
-      'SICK': 'Sick',
-      'CASUAL': 'Casual',
-      'EMERGENCY': 'Emergency'
+  approveLeave(leave: LeaveResponse) {
+    this.processLeaveAction(leave, 'APPROVED');
+  }
+
+  rejectLeave(leave: LeaveResponse) {
+    const comments = prompt('Please provide a reason for rejection (optional):');
+    this.processLeaveAction(leave, 'REJECTED', comments || undefined);
+  }
+
+  private processLeaveAction(leave: LeaveResponse, status: string, comments?: string) {
+    this.processingLeaves.add(leave.id);
+
+    const request = {
+      status,
+      comments
     };
-    return labels[type] || type;
+
+    this.apiService.approveLeave(leave.id, request).subscribe({
+      next: (response) => {
+        this.processingLeaves.delete(leave.id);
+        if (response.success) {
+          // Remove from pending list
+          this.pendingLeaves = this.pendingLeaves.filter(l => l.id !== leave.id);
+          
+          // Add to recent activity
+          if (response.data) {
+            this.recentActivity.unshift(response.data);
+            this.recentActivity = this.recentActivity.slice(0, 10);
+          }
+
+          // Update stats
+          if (this.systemStats) {
+            this.systemStats.pendingLeaves--;
+            if (status === 'APPROVED') {
+              this.systemStats.approvedLeaves++;
+            } else {
+              this.systemStats.rejectedLeaves++;
+            }
+          }
+        }
+      },
+      error: (error) => {
+        this.processingLeaves.delete(leave.id);
+        console.error('Error processing leave:', error);
+        alert('Failed to process leave request. Please try again.');
+      }
+    });
+  }
+
+  refreshData() {
+    this.loadDashboardData();
+  }
+
+  navigateToAllLeaves() {
+    this.router.navigate(['/admin/all-leaves']);
+  }
+
+  navigateToUserManagement() {
+    this.router.navigate(['/admin/users']);
+  }
+
+  navigateToReports() {
+    // TODO: Implement reports page
+    console.log('Navigate to reports');
+  }
+
+  navigateToSettings() {
+    // TODO: Implement settings page
+    console.log('Navigate to settings');
   }
 
   formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString();
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+
+  formatRelativeTime(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) {
+      return 'Just now';
+    } else if (diffInHours < 24) {
+      return `${diffInHours}h ago`;
+    } else if (diffInHours < 48) {
+      return 'Yesterday';
+    } else {
+      const diffInDays = Math.floor(diffInHours / 24);
+      return `${diffInDays}d ago`;
+    }
+  }
+
+  formatLeaveType(type: string): string {
+    switch (type) {
+      case LeaveType.ANNUAL: return 'Annual';
+      case LeaveType.SICK: return 'Sick';
+      case LeaveType.CASUAL: return 'Casual';
+      case LeaveType.EMERGENCY: return 'Emergency';
+      default: return type;
+    }
+  }
+
+  getActivityAction(status: string): string {
+    switch (status) {
+      case LeaveStatus.APPROVED: return 'was approved for';
+      case LeaveStatus.REJECTED: return 'was rejected for';
+      default: return 'requested';
+    }
   }
 } 

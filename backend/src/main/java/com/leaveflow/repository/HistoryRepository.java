@@ -3,13 +3,13 @@ package com.leaveflow.repository;
 import com.leaveflow.entity.History;
 import io.micronaut.data.annotation.Repository;
 import io.micronaut.data.annotation.Query;
-import io.micronaut.data.repository.CrudRepository;
+import io.micronaut.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
-public interface HistoryRepository extends CrudRepository<History, Long> {
+public interface HistoryRepository extends JpaRepository<History, Long> {
     
     List<History> findByUserId(Long userId);
     
@@ -23,9 +23,9 @@ public interface HistoryRepository extends CrudRepository<History, Long> {
     
     List<History> findByLeaveIdOrderByTimestampDesc(Long leaveId);
     
-    @Query("SELECT * FROM history WHERE timestamp >= :fromDate AND timestamp <= :toDate ORDER BY timestamp DESC")
+    @Query("SELECT h FROM History h WHERE h.timestamp >= :fromDate AND h.timestamp <= :toDate ORDER BY h.timestamp DESC")
     List<History> findByDateRange(LocalDateTime fromDate, LocalDateTime toDate);
     
-    @Query("SELECT * FROM history WHERE user_id = :userId AND timestamp >= :fromDate AND timestamp <= :toDate ORDER BY timestamp DESC")
+    @Query("SELECT h FROM History h WHERE h.userId = :userId AND h.timestamp >= :fromDate AND h.timestamp <= :toDate ORDER BY h.timestamp DESC")
     List<History> findByUserIdAndDateRange(Long userId, LocalDateTime fromDate, LocalDateTime toDate);
 } 

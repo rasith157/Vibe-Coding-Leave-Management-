@@ -310,5 +310,4 @@ Your frontend should now install dependencies successfully and start on `http://
 
 The dependency conflicts between Angular 17 and newer packages have been resolved. Try running `start-leaveflow.bat` now - it should work! 🎉
 
-If you still encounter issues, the scripts will automatically try the alternative installation methods. #   V i b e - C o d i n g - L e a v e - M a n a g e m e n t -  
- 
+If you still encounter issues, the scripts will automatically try the alternative installation methods. 

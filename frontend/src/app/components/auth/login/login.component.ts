@@ -94,7 +94,7 @@ import { LoginRequest } from '../../../interfaces/auth.interface';
                   autocomplete="current-password">
                 <button 
                   type="button"
-                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-primary transition-colors"
                   (click)="togglePassword()">
                   <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
                 </button>
@@ -105,12 +105,12 @@ import { LoginRequest } from '../../../interfaces/auth.interface';
             <div class="flex items-center justify-between">
               <label class="flex items-center">
                 <input type="checkbox" class="rounded border-gray-300 text-primary focus:ring-primary mr-3">
-                <span class="text-sm text-gray-600">Remember me</span>
+                <span class="text-sm text-gray-700">Remember me</span>
               </label>
             </div>
 
             <!-- Error Message -->
-            <div *ngIf="errorMessage" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            <div *ngIf="errorMessage" class="bg-error-50 border border-error-200 text-error-700 px-4 py-3 rounded-lg text-sm">
               <div class="flex items-center">
                 <i class="fas fa-exclamation-circle mr-2"></i>
                 {{ errorMessage }}
@@ -135,7 +135,7 @@ import { LoginRequest } from '../../../interfaces/auth.interface';
 
           <!-- Sign Up Link -->
           <div class="text-center mt-8 pt-6 border-t border-gray-200">
-            <p class="text-gray-600">
+            <p class="text-gray-700">
               Don't have an account? 
               <a routerLink="/register" class="text-primary font-semibold hover:text-primary-dark transition-colors ml-1" (click)="onSignUpLinkClick()">
                 Create one now
@@ -369,6 +369,14 @@ export class LoginComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    // Test console logging - if you can see this, console logging is working!
+    console.group('%c🚀 LeaveFlow Login Component Loaded', 'color: blue; font-weight: bold; font-size: 14px;');
+    console.log('%c✅ If you can see this message, console logging is working!', 'color: green;');
+    console.log('%c📋 To see more logs, try logging in or performing actions.', 'color: blue;');
+    console.log('%c🖥️ Backend logs appear in the terminal where you started the backend.', 'color: orange;');
+    console.log('%c🌐 Frontend logs appear here in the browser console.', 'color: purple;');
+    console.groupEnd();
+
     this.auditLogger.logComponentLifecycle('LoginComponent', 'OnInit', {
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,

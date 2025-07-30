@@ -56,16 +56,10 @@
             <artifactId>micronaut-security-jwt</artifactId>
         </dependency>
         
-        <!-- Micronaut Data -->
+        <!-- JPA/Hibernate -->
         <dependency>
             <groupId>io.micronaut.data</groupId>
-            <artifactId>micronaut-data-jdbc</artifactId>
-        </dependency>
-        
-        <!-- Flyway for Database Migrations -->
-        <dependency>
-            <groupId>io.micronaut.flyway</groupId>
-            <artifactId>micronaut-flyway</artifactId>
+            <artifactId>micronaut-data-hibernate-jpa</artifactId>
         </dependency>
         
         <!-- Database -->

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     
-    <!-- Console Appender with Colors -->
+    <!-- Console Appender with Colors and Enhanced Error Display -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%green(%d{HH:mm:ss.SSS}) %highlight(%-5level) %magenta([%thread]) %cyan(%logger{36}) - %msg%n</pattern>
@@ -17,26 +17,33 @@
             <onMismatch>DENY</onMismatch>
         </filter>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%red(%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n)</pattern>
         </encoder>
     </appender>
     
-    <!-- Logger Configuration -->
-    <logger name="com.leaveflow" level="INFO" additivity="false">
+    <!-- Logger Configuration - More verbose for debugging -->
+    <logger name="com.leaveflow" level="DEBUG" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ERROR_FILE"/>
     </logger>
     
-    <logger name="io.micronaut.security" level="WARN" additivity="false">
+    <!-- HTTP Request/Response Logging -->
+    <logger name="io.micronaut.http.server" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
     </logger>
     
-    <logger name="io.micronaut.http" level="WARN" additivity="false">
+    <!-- Security Logging -->
+    <logger name="io.micronaut.security" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+    
+    <!-- SQL Logging -->
+    <logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
         <appender-ref ref="CONSOLE"/>
     </logger>
     
     <!-- Root Logger -->
-    <root level="WARN">
+    <root level="INFO">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ERROR_FILE"/>
     </root>

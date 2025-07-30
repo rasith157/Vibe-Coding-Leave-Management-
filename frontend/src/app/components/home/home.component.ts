@@ -106,7 +106,7 @@ import { AuditLoggerService } from '../../services/audit-logger.service';
                   <i class="fas fa-paper-plane text-3xl"></i>
                 </div>
                 <h3 class="text-xl font-bold text-gray-800 mb-4">Easy Request Management</h3>
-                <p class="text-gray-600 leading-relaxed">
+                <p class="text-gray-700 leading-relaxed">
                   Submit and approve leave requests with an 
                   intuitive interface that makes time-off 
                   management effortless.
@@ -121,7 +121,7 @@ import { AuditLoggerService } from '../../services/audit-logger.service';
                   <i class="fas fa-check-circle text-3xl"></i>
                 </div>
                 <h3 class="text-xl font-bold text-gray-800 mb-4">Automated Approvals</h3>
-                <p class="text-gray-600 leading-relaxed">
+                <p class="text-gray-700 leading-relaxed">
                   Streamline approval workflow that saves time for 
                   managers and employees with intelligent 
                   automation.
@@ -136,7 +136,7 @@ import { AuditLoggerService } from '../../services/audit-logger.service';
                   <i class="fas fa-chart-bar text-3xl"></i>
                 </div>
                 <h3 class="text-xl font-bold text-gray-800 mb-4">Analytics & Insights</h3>
-                <p class="text-gray-600 leading-relaxed">
+                <p class="text-gray-700 leading-relaxed">
                   Track leave patterns and generate reports for 
                   better workforce planning and 
                   decision-making.
@@ -159,7 +159,7 @@ import { AuditLoggerService } from '../../services/audit-logger.service';
                 <h2 class="text-4xl font-bold text-gray-900 mb-6">
                   Ready to Transform Your Leave Management?
                 </h2>
-                <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                <p class="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
                   Join thousands of organizations already using LeaveFlow to streamline 
                   their HR processes and boost team productivity.
                 </p>

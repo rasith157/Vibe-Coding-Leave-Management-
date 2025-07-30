@@ -5,7 +5,7 @@ import { ApiService } from '../services/api.service';
 @Injectable({
   providedIn: 'root'
 })
-export class AuthGuard implements CanActivate {
+export class AdminGuard implements CanActivate {
 
   constructor(
     private apiService: ApiService,
@@ -17,6 +17,11 @@ export class AuthGuard implements CanActivate {
     
     if (!user) {
       this.router.navigate(['/login']);
+      return false;
+    }
+
+    if (user.role !== 'ADMIN') {
+      this.router.navigate(['/dashboard']);
       return false;
     }
 

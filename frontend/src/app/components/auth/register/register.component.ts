@@ -121,7 +121,7 @@ import { RegisterRequest } from '../../../interfaces/auth.interface';
                   autocomplete="new-password">
                 <button 
                   type="button"
-                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-primary transition-colors"
                   (click)="togglePassword()">
                   <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
                 </button>
@@ -144,7 +144,7 @@ import { RegisterRequest } from '../../../interfaces/auth.interface';
                   autocomplete="new-password">
                 <button 
                   type="button"
-                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-primary transition-colors"
                   (click)="toggleConfirmPassword()">
                   <i [class]="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
                 </button>
@@ -166,7 +166,7 @@ import { RegisterRequest } from '../../../interfaces/auth.interface';
                   (ngModelChange)="onTermsChange()"
                   name="agreedToTerms"
                   required>
-                <span class="text-sm text-gray-600 leading-relaxed">
+                <span class="text-sm text-gray-700 leading-relaxed">
                   I agree to the 
                   <button type="button" class="text-primary hover:text-primary-dark font-semibold transition-colors underline" (click)="onTermsClick()">Terms of Service</button>
                   and 
@@ -203,7 +203,7 @@ import { RegisterRequest } from '../../../interfaces/auth.interface';
 
           <!-- Sign In Link -->
           <div class="text-center mt-8 pt-6 border-t border-gray-200">
-            <p class="text-gray-600">
+            <p class="text-gray-700">
               Already have an account? 
               <a routerLink="/login" class="text-primary font-semibold hover:text-primary-dark transition-colors ml-1" (click)="onSignInLinkClick()">
                 Sign in here

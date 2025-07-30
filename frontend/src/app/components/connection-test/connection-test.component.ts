@@ -12,7 +12,7 @@ import { AuditLoggerService } from '../../services/audit-logger.service';
       <div class="max-w-md w-full space-y-8">
         <div class="text-center">
           <h2 class="text-3xl font-bold text-gray-900 mb-2">Connection Test</h2>
-          <p class="text-gray-600">Testing frontend to backend connectivity</p>
+          <p class="text-gray-700">Testing frontend to backend connectivity</p>
         </div>
 
         <div class="bg-white shadow-lg rounded-lg p-6 space-y-4">
@@ -47,7 +47,7 @@ import { AuditLoggerService } from '../../services/audit-logger.service';
             </div>
             <div class="flex justify-between" *ngIf="lastTested">
               <span>Last Tested:</span>
-              <span class="text-gray-600">{{ lastTested }}</span>
+              <span class="text-gray-700">{{ lastTested }}</span>
             </div>
           </div>
 

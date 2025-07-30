@@ -1,56 +1,72 @@
 package com.leaveflow.entity;
 
-import io.micronaut.data.annotation.GeneratedValue;
-import io.micronaut.data.annotation.Id;
-import io.micronaut.data.annotation.MappedEntity;
-import io.micronaut.data.annotation.DateCreated;
-import io.micronaut.data.annotation.DateUpdated;
-
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Future;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@MappedEntity("leaves")
+@Entity
+@Table(name = "leaves")
 public class Leave {
     
     @Id
-    @GeneratedValue(GeneratedValue.Type.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
     @NotNull
+    @Column(name = "user_id", nullable = false)
     private Long userId;
     
     @NotBlank
+    @Column(name = "leave_type", nullable = false)
     private String leaveType; // ANNUAL, SICK, CASUAL, EMERGENCY
     
     @NotNull
+    @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
     
     @NotNull
+    @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
     
     @NotNull
+    @Column(name = "duration", nullable = false)
     private Integer duration; // Number of days
     
+    @Column(name = "reason")
     private String reason;
     
     @NotBlank
+    @Column(name = "status", nullable = false)
     private String status = "PENDING"; // PENDING, APPROVED, REJECTED
     
+    @Column(name = "approved_by")
     private Long approvedBy; // User ID of admin who approved/rejected
     
+    @Column(name = "approved_at")
     private LocalDateTime approvedAt;
     
+    @Column(name = "comments")
     private String comments; // Admin comments
     
-    @DateCreated
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     
-    @DateUpdated
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
     
     // Constructors
     public Leave() {}

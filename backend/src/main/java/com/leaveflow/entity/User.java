@@ -1,54 +1,72 @@
 package com.leaveflow.entity;
 
-import io.micronaut.data.annotation.GeneratedValue;
-import io.micronaut.data.annotation.Id;
-import io.micronaut.data.annotation.MappedEntity;
-import io.micronaut.data.annotation.DateCreated;
-import io.micronaut.data.annotation.DateUpdated;
-
+import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
-@MappedEntity("users")
+@Entity
+@Table(name = "users")
 public class User {
     
     @Id
-    @GeneratedValue(GeneratedValue.Type.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
     @NotBlank
     @Size(min = 2, max = 50)
+    @Column(name = "first_name", nullable = false, length = 50)
     private String firstName;
     
     @NotBlank
     @Size(min = 2, max = 50)
+    @Column(name = "last_name", nullable = false, length = 50)
     private String lastName;
     
     @NotBlank
     @Email
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
     
     @NotBlank
     @Size(min = 6)
+    @Column(name = "password", nullable = false)
     private String password;
     
     @NotBlank
+    @Column(name = "role", nullable = false)
     private String role; // EMPLOYEE or ADMIN
     
+    @Column(name = "active", nullable = false)
     private boolean active = true;
     
+    @Column(name = "annual_leave_balance")
     private Integer annualLeaveBalance = 25; // Default 25 days
+    
+    @Column(name = "sick_leave_balance")
     private Integer sickLeaveBalance = 10; // Default 10 days
+    
+    @Column(name = "casual_leave_balance")
     private Integer casualLeaveBalance = 5; // Default 5 days
     
-    @DateCreated
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     
-    @DateUpdated
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
     
     // Constructors
     public User() {}
